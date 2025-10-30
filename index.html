@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Multiple Vega-Lite Charts</title>
+  <title>Multiple Vega-Lite Charts (Bigger + Responsive)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
@@ -12,44 +12,67 @@
   <style>
     body { font-family: system-ui, sans-serif; margin: 2rem; }
     h2 { margin-top: 2rem; }
-    .chart { max-width: 900px; margin-bottom: 2rem; }
+    /* Make the page reasonably wide on desktop */
+    .page { max-width: 1200px; margin: 0 auto; }
+    /* Each chart is full-width, with a taller default height */
+    .chart {
+      width: 100%;
+      min-height: 420px; /* bump this to make charts taller */
+      margin: 1.25rem 0;
+    }
   </style>
 </head>
 <body>
-  <h1>Sample Vega-Lite Charts</h1>
+  <div class="page">
+    <h1>Sample Vega-Lite Charts</h1>
 
-  <h2>Bar Chart</h2>
-  <div id="barChart" class="chart"></div>
+    <h2>Bar Chart</h2>
+    <div id="barChart" class="chart"></div>
 
-  <h2>Line Chart</h2>
-  <div id="lineChart" class="chart"></div>
+    <h2>Line Chart</h2>
+    <div id="lineChart" class="chart"></div>
 
-  <h2>Scatter Plot</h2>
-  <div id="scatterChart" class="chart"></div>
+    <h2>Scatter Plot</h2>
+    <div id="scatterChart" class="chart"></div>
+  </div>
 
   <script>
-    // 1️⃣ Bar chart
-    const barSpec = {
+    // Common options: fit chart to its container and show toolbar
+    const embedOpts = {
+      actions: { export: true, source: true, editor: true }
+    };
+
+    // Helper: a base spec that fits to the container width
+    const base = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+      autosize: { type: "fit", contains: "padding" }, // key for responsiveness
+      width: "container",   // stretch horizontally
+      height: 400           // set a larger default height
+    };
+
+    // 1) Bar
+    const barSpec = {
+      ...base,
       data: { values: [
         {category:"A", value:30}, {category:"B", value:55},
-        {category:"C", value:43}, {category:"D", value:91}
+        {category:"C", value:43}, {category:"D", value:91},
+        {category:"E", value:70}, {category:"F", value:38}
       ]},
-      mark: "bar",
+      mark: { type: "bar", cornerRadiusTopLeft: 3, cornerRadiusTopRight: 3 },
       encoding: {
-        x: { field: "category", type: "nominal", axis: { title: "Category" }},
+        x: { field: "category", type: "nominal", axis: { labelAngle: 0, title: "Category" }},
         y: { field: "value", type: "quantitative", axis: { title: "Value" }},
         tooltip: [{field:"category"}, {field:"value"}]
       }
     };
 
-    // 2️⃣ Line chart
+    // 2) Line
     const lineSpec = {
-      $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+      ...base,
       data: { values: [
-        {x:0, y:2}, {x:1, y:6}, {x:2, y:3}, {x:3, y:10}, {x:4, y:7}
+        {x:0, y:2}, {x:1, y:6}, {x:2, y:3}, {x:3, y:10}, {x:4, y:7}, {x:5, y:12}
       ]},
-      mark: "line",
+      mark: { type: "line", point: true },
       encoding: {
         x: { field: "x", type: "quantitative", title: "X" },
         y: { field: "y", type: "quantitative", title: "Y" },
@@ -57,27 +80,26 @@
       }
     };
 
-    // 3️⃣ Scatter plot
+    // 3) Scatter
     const scatterSpec = {
-      $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+      ...base,
       data: { values: [
         {x:1, y:2, category:"A"}, {x:2, y:3, category:"B"},
         {x:3, y:5, category:"C"}, {x:4, y:4, category:"D"},
-        {x:5, y:7, category:"E"}
+        {x:5, y:7, category:"E"}, {x:6, y:6, category:"F"}
       ]},
       mark: "point",
       encoding: {
         x: { field: "x", type: "quantitative" },
         y: { field: "y", type: "quantitative" },
-        color: { field: "category", type: "nominal" },
+        color: { field: "category", type: "nominal", legend: { title: "Group" } },
         tooltip: [{field:"x"}, {field:"y"}, {field:"category"}]
       }
     };
 
-    // Render all charts
-    vegaEmbed("#barChart", barSpec);
-    vegaEmbed("#lineChart", lineSpec);
-    vegaEmbed("#scatterChart", scatterSpec);
+    vegaEmbed("#barChart", barSpec, embedOpts);
+    vegaEmbed("#lineChart", lineSpec, embedOpts);
+    vegaEmbed("#scatterChart", scatterSpec, embedOpts);
   </script>
 </body>
 </html>
