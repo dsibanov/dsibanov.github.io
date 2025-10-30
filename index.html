@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Multiple Vega-Lite Charts (Bigger + Responsive)</title>
+  <title>Multiple Vega(-Lite) Charts (Bigger + Responsive)</title>
 
+  <!-- CDNs -->
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
@@ -12,22 +13,19 @@
   <style>
     body { font-family: system-ui, sans-serif; margin: 2rem; }
     h2 { margin-top: 2rem; }
-    /* Make the page reasonably wide on desktop */
     .page { max-width: 1200px; margin: 0 auto; }
-    /* Each chart is full-width, with a taller default height */
-    .chart {
-      width: 100%;
-      min-height: 420px; /* bump this to make charts taller */
-      margin: 1.25rem 0;
-    }
+    .chart { width: 100%; min-height: 420px; margin: 1.25rem 0; }
   </style>
 </head>
 <body>
   <div class="page">
-    <h1>Sample Vega-Lite Charts</h1>
+    <h1>Sample Vega(-Lite) Charts</h1>
 
-    <h2>Bar Chart</h2>
+    <h2>Bar Chart (Vega-Lite, Orange)</h2>
     <div id="barChart" class="chart"></div>
+
+    <h2>Bar Chart with Pattern (Vega, Orange hatch)</h2>
+    <div id="barPattern" class="chart"></div>
 
     <h2>Line Chart</h2>
     <div id="lineChart" class="chart"></div>
@@ -37,24 +35,21 @@
 
     <h2>Rolling Average over Raw Values</h2>
     <div id="rollingChart" class="chart"></div>
-
   </div>
 
   <script>
-    // Common options: fit chart to its container and show toolbar
-    const embedOpts = {
-      actions: { export: true, source: true, editor: true }
-    };
+    // Common options for embedding
+    const embedOpts = { actions: { export: true, source: true, editor: true } };
 
-    // Helper: a base spec that fits to the container width
+    // Base for Vega-Lite specs (responsive)
     const base = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
-      autosize: { type: "fit", contains: "padding" }, // key for responsiveness
-      width: "container",   // stretch horizontally
-      height: 400           // set a larger default height
+      autosize: { type: "fit", contains: "padding" },
+      width: "container",
+      height: 400
     };
 
-    // 1) Bar
+    // 1) Bar chart (Vega-Lite) — orange bars
     const barSpec = {
       ...base,
       data: { values: [
@@ -62,12 +57,98 @@
         {category:"C", value:43}, {category:"D", value:91},
         {category:"E", value:70}, {category:"F", value:38}
       ]},
-      mark: { type: "bar", cornerRadiusTopLeft: 6, cornerRadiusTopRight: 6 },
+      mark: { type: "bar", color: "#ff7f0e", cornerRadiusTopLeft: 6, cornerRadiusTopRight: 6 },
       encoding: {
         x: { field: "category", type: "nominal", axis: { labelAngle: 0, title: "Category" }},
         y: { field: "value", type: "quantitative", axis: { title: "Value" }},
         tooltip: [{field:"category"}, {field:"value"}]
       }
+    };
+
+    // 1b) Bar chart with pattern (plain Vega) — diagonal hatch + orange
+    // NOTE: Vega-Lite does not natively support pattern fills; Vega does.
+    const barPatternVega = {
+      $schema: "https://vega.github.io/schema/vega/v5.json",
+      width: 900,
+      height: 400,
+      padding: 5,
+      autosize: { type: "fit", contains: "padding" },
+      data: [
+        {
+          name: "table",
+          values: [
+            {category:"A", value:30}, {category:"B", value:55},
+            {category:"C", value:43}, {category:"D", value:91},
+            {category:"E", value:70}, {category:"F", value:38}
+          ]
+        }
+      ],
+      scales: [
+        { name: "x", type: "band", domain: { data: "table", field: "category" }, range: "width", padding: 0.15 },
+        { name: "y", type: "linear", domain: { data: "table", field: "value" }, nice: true, range: "height" },
+        { name: "color", type: "ordinal", range: ["#ff7f0e"] }
+      ],
+      axes: [
+        { orient: "bottom", scale: "x", labelAngle: 0, title: "Category" },
+        { orient: "left", scale: "y", title: "Value" }
+      ],
+      marks: [
+        // Base orange bar
+        {
+          type: "rect",
+          from: { data: "table" },
+          encode: {
+            update: {
+              x: { scale: "x", field: "category" },
+              width: { scale: "x", band: 1 },
+              y: { scale: "y", field: "value" },
+              y2: { scale: "y", value: 0 },
+              fill: { value: "#ffb585" } // light orange underlay to make hatch visible
+            }
+          }
+        },
+        // Pattern overlay using canvas pattern
+        {
+          type: "rect",
+          from: { data: "table" },
+          encode: {
+            update: {
+              x: { scale: "x", field: "category" },
+              width: { scale: "x", band: 1 },
+              y: { scale: "y", field: "value" },
+              y2: { scale: "y", value: 0 },
+              fill: {
+                signal: "pattern('diagonal-stripe', { 'stroke': '#ff7f0e', 'strokeWidth': 2, 'background': 'transparent', 'size': 8 })"
+              }
+            }
+          }
+        },
+        // Optional outline to crisp edges
+        {
+          type: "rect",
+          from: { data: "table" },
+          encode: {
+            update: {
+              x: { scale: "x", field: "category" },
+              width: { scale: "x", band: 1 },
+              y: { scale: "y", field: "value" },
+              y2: { scale: "y", value: 0 },
+              fill: { value: "transparent" },
+              stroke: { value: "#ff7f0e" },
+              strokeWidth: { value: 1 }
+            }
+          }
+        },
+        // Tooltips
+        {
+          type: "text",
+          from: { data: "table" },
+          encode: {
+            hover: { fillOpacity: { value: 1 } },
+            update: { fillOpacity: { value: 0 } }
+          }
+        }
+      ]
     };
 
     // 2) Line
@@ -100,82 +181,72 @@
         color: { field: "category", type: "nominal", legend: { title: "Group" } },
         tooltip: [{field:"x"}, {field:"y"}, {field:"category"}]
       }
-    }
-<script>
-  // Example daily data
-  const rawSeries = [
-    {date:"2025-09-01", value:12},{date:"2025-09-02", value:18},
-    {date:"2025-09-03", value:10},{date:"2025-09-04", value:22},
-    {date:"2025-09-05", value:16},{date:"2025-09-06", value:24},
-    {date:"2025-09-07", value:20},{date:"2025-09-08", value:26},
-    {date:"2025-09-09", value:19},{date:"2025-09-10", value:28},
-    {date:"2025-09-11", value:25},{date:"2025-09-12", value:29},
-    {date:"2025-09-13", value:21},{date:"2025-09-14", value:30},
-    {date:"2025-09-15", value:27},{date:"2025-09-16", value:33},
-    {date:"2025-09-17", value:26},{date:"2025-09-18", value:35},
-    {date:"2025-09-19", value:31},{date:"2025-09-20", value:34}
-  ];
+    };
 
-  // Rolling average (7-day) layered over raw values
-  const rollingSpec = {
-    ...base, // from earlier: schema + autosize + width + height
-    data: { values: rawSeries },
-    transform: [
-      {
-        window: [{ op: "mean", field: "value", as: "rolling_7d" }],
-        frame: [-6, 0],                 // previous 6 days + current = 7-day avg
-        sort: [{ field: "date", order: "ascending" }]
-      }
-    ],
-    layer: [
-      // Raw series (line + subtle points)
-      {
-        mark: { type: "line", interpolate: "monotone", opacity: 0.5 },
-        encoding: {
-          x: { field: "date", type: "temporal", title: "Date" },
-          y: { field: "value", type: "quantitative", title: "Value" },
-          tooltip: [
-            { field: "date", type: "temporal", title: "Date" },
-            { field: "value", type: "quantitative", title: "Raw" }
-          ]
+    // 4) Rolling average over raw values
+    const rawSeries = [
+      {date:"2025-09-01", value:12},{date:"2025-09-02", value:18},
+      {date:"2025-09-03", value:10},{date:"2025-09-04", value:22},
+      {date:"2025-09-05", value:16},{date:"2025-09-06", value:24},
+      {date:"2025-09-07", value:20},{date:"2025-09-08", value:26},
+      {date:"2025-09-09", value:19},{date:"2025-09-10", value:28},
+      {date:"2025-09-11", value:25},{date:"2025-09-12", value:29},
+      {date:"2025-09-13", value:21},{date:"2025-09-14", value:30},
+      {date:"2025-09-15", value:27},{date:"2025-09-16", value:33},
+      {date:"2025-09-17", value:26},{date:"2025-09-18", value:35},
+      {date:"2025-09-19", value:31},{date:"2025-09-20", value:34}
+    ];
+
+    const rollingSpec = {
+      ...base,
+      data: { values: rawSeries },
+      transform: [
+        {
+          window: [{ op: "mean", field: "value", as: "rolling_7d" }],
+          frame: [-6, 0],
+          sort: [{ field: "date", order: "ascending" }]
         }
-      },
-      {
-        mark: { type: "point", filled: true, opacity: 0.4, size: 40 },
-        encoding: {
-          x: { field: "date", type: "temporal" },
-          y: { field: "value", type: "quantitative" },
-          tooltip: [
-            { field: "date", type: "temporal", title: "Date" },
-            { field: "value", type: "quantitative", title: "Raw" }
-          ]
+      ],
+      layer: [
+        { // raw line
+          mark: { type: "line", interpolate: "monotone", opacity: 0.5 },
+          encoding: {
+            x: { field: "date", type: "temporal", title: "Date" },
+            y: { field: "value", type: "quantitative", title: "Value" },
+            tooltip: [
+              { field: "date", type: "temporal", title: "Date" },
+              { field: "value", type: "quantitative", title: "Raw" }
+            ]
+          }
+        },
+        { // raw points
+          mark: { type: "point", filled: true, opacity: 0.4, size: 40 },
+          encoding: {
+            x: { field: "date", type: "temporal" },
+            y: { field: "value", type: "quantitative" }
+          }
+        },
+        { // rolling avg
+          mark: { type: "line", strokeWidth: 3 },
+          encoding: {
+            x: { field: "date", type: "temporal" },
+            y: { field: "rolling_7d", type: "quantitative", title: "Value (7-day avg)" },
+            tooltip: [
+              { field: "date", type: "temporal", title: "Date" },
+              { field: "rolling_7d", type: "quantitative", title: "7-day Avg", format: ".2f" }
+            ]
+          }
         }
-      },
-      // Rolling average line
-      {
-        mark: { type: "line", strokeWidth: 3 },
-        encoding: {
-          x: { field: "date", type: "temporal" },
-          y: { field: "rolling_7d", type: "quantitative", title: "Value (7-day avg)" },
-          tooltip: [
-            { field: "date", type: "temporal", title: "Date" },
-            { field: "rolling_7d", type: "quantitative", title: "7-day Avg", format: ".2f" }
-          ]
-        }
-      }
-    ],
-    resolve: { scale: { y: "shared" } }
-  };
+      ],
+      resolve: { scale: { y: "shared" } }
+    };
 
-  vegaEmbed("#rollingChart", rollingSpec, embedOpts);
-</script>
-
-      
-      ;
-
+    // Render all charts
     vegaEmbed("#barChart", barSpec, embedOpts);
+    vegaEmbed("#barPattern", barPatternVega, embedOpts);
     vegaEmbed("#lineChart", lineSpec, embedOpts);
     vegaEmbed("#scatterChart", scatterSpec, embedOpts);
+    vegaEmbed("#rollingChart", rollingSpec, embedOpts);
   </script>
 </body>
 </html>
