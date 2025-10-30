@@ -34,6 +34,10 @@
 
     <h2>Scatter Plot</h2>
     <div id="scatterChart" class="chart"></div>
+
+    <h2>Rolling Average over Raw Values</h2>
+<div id="rollingChart" class="chart"></div>
+
   </div>
 
   <script>
@@ -58,7 +62,7 @@
         {category:"C", value:43}, {category:"D", value:91},
         {category:"E", value:70}, {category:"F", value:38}
       ]},
-      mark: { type: "bar", cornerRadiusTopLeft: 3, cornerRadiusTopRight: 3 },
+      mark: { type: "bar", cornerRadiusTopLeft: 6, cornerRadiusTopRight: 6 },
       encoding: {
         x: { field: "category", type: "nominal", axis: { labelAngle: 0, title: "Category" }},
         y: { field: "value", type: "quantitative", axis: { title: "Value" }},
@@ -87,6 +91,7 @@
         {x:1, y:2, category:"A"}, {x:2, y:3, category:"B"},
         {x:3, y:5, category:"C"}, {x:4, y:4, category:"D"},
         {x:5, y:7, category:"E"}, {x:6, y:6, category:"F"}
+        {x:7, y:4, category:"G"}, {x:7, y:7, category:"H"}
       ]},
       mark: "point",
       encoding: {
@@ -95,7 +100,78 @@
         color: { field: "category", type: "nominal", legend: { title: "Group" } },
         tooltip: [{field:"x"}, {field:"y"}, {field:"category"}]
       }
-    };
+    }
+<script>
+  // Example daily data
+  const rawSeries = [
+    {date:"2025-09-01", value:12},{date:"2025-09-02", value:18},
+    {date:"2025-09-03", value:10},{date:"2025-09-04", value:22},
+    {date:"2025-09-05", value:16},{date:"2025-09-06", value:24},
+    {date:"2025-09-07", value:20},{date:"2025-09-08", value:26},
+    {date:"2025-09-09", value:19},{date:"2025-09-10", value:28},
+    {date:"2025-09-11", value:25},{date:"2025-09-12", value:29},
+    {date:"2025-09-13", value:21},{date:"2025-09-14", value:30},
+    {date:"2025-09-15", value:27},{date:"2025-09-16", value:33},
+    {date:"2025-09-17", value:26},{date:"2025-09-18", value:35},
+    {date:"2025-09-19", value:31},{date:"2025-09-20", value:34}
+  ];
+
+  // Rolling average (7-day) layered over raw values
+  const rollingSpec = {
+    ...base, // from earlier: schema + autosize + width + height
+    data: { values: rawSeries },
+    transform: [
+      {
+        window: [{ op: "mean", field: "value", as: "rolling_7d" }],
+        frame: [-6, 0],                 // previous 6 days + current = 7-day avg
+        sort: [{ field: "date", order: "ascending" }]
+      }
+    ],
+    layer: [
+      // Raw series (line + subtle points)
+      {
+        mark: { type: "line", interpolate: "monotone", opacity: 0.5 },
+        encoding: {
+          x: { field: "date", type: "temporal", title: "Date" },
+          y: { field: "value", type: "quantitative", title: "Value" },
+          tooltip: [
+            { field: "date", type: "temporal", title: "Date" },
+            { field: "value", type: "quantitative", title: "Raw" }
+          ]
+        }
+      },
+      {
+        mark: { type: "point", filled: true, opacity: 0.4, size: 40 },
+        encoding: {
+          x: { field: "date", type: "temporal" },
+          y: { field: "value", type: "quantitative" },
+          tooltip: [
+            { field: "date", type: "temporal", title: "Date" },
+            { field: "value", type: "quantitative", title: "Raw" }
+          ]
+        }
+      },
+      // Rolling average line
+      {
+        mark: { type: "line", strokeWidth: 3 },
+        encoding: {
+          x: { field: "date", type: "temporal" },
+          y: { field: "rolling_7d", type: "quantitative", title: "Value (7-day avg)" },
+          tooltip: [
+            { field: "date", type: "temporal", title: "Date" },
+            { field: "rolling_7d", type: "quantitative", title: "7-day Avg", format: ".2f" }
+          ]
+        }
+      }
+    ],
+    resolve: { scale: { y: "shared" } }
+  };
+
+  vegaEmbed("#rollingChart", rollingSpec, embedOpts);
+</script>
+
+      
+      ;
 
     vegaEmbed("#barChart", barSpec, embedOpts);
     vegaEmbed("#lineChart", lineSpec, embedOpts);
