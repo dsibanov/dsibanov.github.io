@@ -3,90 +3,81 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sample Bar Chart with Vega-Lite</title>
+  <title>Multiple Vega-Lite Charts</title>
 
-  <!-- Vega / Vega-Lite / vega-embed via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
 
   <style>
-    :root {
-      color-scheme: light dark;
-    }
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      margin: 2rem;
-      line-height: 1.5;
-    }
-    h1 { margin: 0 0 0.5rem; font-size: 1.5rem; }
-    .wrap {
-      max-width: 920px;
-      margin: 0 auto;
-    }
-    /* Make the chart responsive to container width */
-    #vis { width: 100%; }
-    footer { margin-top: 1.25rem; font-size: 0.9rem; opacity: 0.8; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    body { font-family: system-ui, sans-serif; margin: 2rem; }
+    h2 { margin-top: 2rem; }
+    .chart { max-width: 900px; margin-bottom: 2rem; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Sample Bar Chart (Vega-Lite)</h1>
-    <p>This is a minimal Vega-Lite example you can host on GitHub Pages.</p>
-    <div id="vis"></div>
+  <h1>Sample Vega-Lite Charts</h1>
 
-    <footer>
-      Vega-Lite docs: <a href="https://vega.github.io/vega-lite/" target="_blank" rel="noopener">https://vega.github.io/vega-lite/</a>
-    </footer>
-  </div>
+  <h2>Bar Chart</h2>
+  <div id="barChart" class="chart"></div>
+
+  <h2>Line Chart</h2>
+  <div id="lineChart" class="chart"></div>
+
+  <h2>Scatter Plot</h2>
+  <div id="scatterChart" class="chart"></div>
 
   <script>
-    // Vega-Lite specification for a simple bar chart
-    const spec = {
+    // 1️⃣ Bar chart
+    const barSpec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
-      description: "A simple bar chart with embedded data.",
-      width: "container",          // stretch to container width
-      height: 320,
-      data: {
-        values: [
-          {"category": "Alpha",   "value": 28},
-          {"category": "Beta",    "value": 55},
-          {"category": "Gamma",   "value": 43},
-          {"category": "Delta",   "value": 91},
-          {"category": "Epsilon", "value": 81},
-          {"category": "Zeta",    "value": 53},
-          {"category": "Eta",     "value": 19},
-          {"category": "Theta",   "value": 87}
-        ]
-      },
-      mark: {
-        type: "bar",
-        cornerRadiusTopLeft: 3,
-        cornerRadiusTopRight: 3
-      },
+      data: { values: [
+        {category:"A", value:30}, {category:"B", value:55},
+        {category:"C", value:43}, {category:"D", value:91}
+      ]},
+      mark: "bar",
       encoding: {
-        x: {
-          field: "category",
-          type: "nominal",
-          sort: "-y",
-          axis: { title: "Category", labelAngle: 0 }
-        },
-        y: {
-          field: "value",
-          type: "quantitative",
-          axis: { title: "Value" }
-        },
-        tooltip: [
-          { field: "category", type: "nominal", title: "Category" },
-          { field: "value", type: "quantitative", title: "Value" }
-        ]
+        x: { field: "category", type: "nominal", axis: { title: "Category" }},
+        y: { field: "value", type: "quantitative", axis: { title: "Value" }},
+        tooltip: [{field:"category"}, {field:"value"}]
       }
     };
 
-    // Render the chart
-    vegaEmbed("#vis", spec, { actions: { export: true, source: true, editor: true } })
-      .catch(console.error);
+    // 2️⃣ Line chart
+    const lineSpec = {
+      $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+      data: { values: [
+        {x:0, y:2}, {x:1, y:6}, {x:2, y:3}, {x:3, y:10}, {x:4, y:7}
+      ]},
+      mark: "line",
+      encoding: {
+        x: { field: "x", type: "quantitative", title: "X" },
+        y: { field: "y", type: "quantitative", title: "Y" },
+        tooltip: [{field:"x"}, {field:"y"}]
+      }
+    };
+
+    // 3️⃣ Scatter plot
+    const scatterSpec = {
+      $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+      data: { values: [
+        {x:1, y:2, category:"A"}, {x:2, y:3, category:"B"},
+        {x:3, y:5, category:"C"}, {x:4, y:4, category:"D"},
+        {x:5, y:7, category:"E"}
+      ]},
+      mark: "point",
+      encoding: {
+        x: { field: "x", type: "quantitative" },
+        y: { field: "y", type: "quantitative" },
+        color: { field: "category", type: "nominal" },
+        tooltip: [{field:"x"}, {field:"y"}, {field:"category"}]
+      }
+    };
+
+    // Render all charts
+    vegaEmbed("#barChart", barSpec);
+    vegaEmbed("#lineChart", lineSpec);
+    vegaEmbed("#scatterChart", scatterSpec);
   </script>
 </body>
 </html>
