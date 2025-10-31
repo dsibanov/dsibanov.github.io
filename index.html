@@ -370,7 +370,7 @@
     type: "line",
     point: {
       filled: true,
-      size: 120,
+      size: 200,
       shape: "diamond"
     }
   },
@@ -385,7 +385,7 @@
       const scatterSpec = {
         ...base,
         data: { values: filtered.scat },
-        mark: "point",
+        mark: "cross",
         encoding: {
           x: { field: "x", type: "quantitative" },
           y: { field: "value", type: "quantitative" },
@@ -409,7 +409,7 @@
               tooltip: [{ field: "date", type: "temporal" }, { field: "value", type: "quantitative" }, { field: "category", type: "nominal"}]
             }
           },
-          { mark: { type: "point", filled: true, opacity: 0.35, size: 40 },
+          { mark: { type: "circle", filled: false, opacity: 0.35, size: 80 },
             encoding: { x: { field: "date", type: "temporal" }, y: { field: "value", type: "quantitative" }, color: { field: "category", type: "nominal" } }
           },
           { mark: { type: "line", strokeWidth: 3 },
