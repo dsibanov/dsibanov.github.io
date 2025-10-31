@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Multiple Vega(-Lite) Charts (Bigger + Responsive)</title>
+  <title>Vega-Lite Dashboard with Global Filters</title>
 
   <!-- CDNs -->
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
@@ -11,261 +11,400 @@
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
 
   <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; }
-    h2 { margin-top: 2rem; }
-    .page { max-width: 1200px; margin: 0 auto; }
-    .chart { width: 100%; min-height: 420px; margin: 1.25rem 0; }
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; background: var(--bg, #fff); }
+    header { padding: 1rem 1.25rem; border-bottom: 1px solid rgba(0,0,0,.08); }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 1.25rem; }
+
+    /* KPI cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    @media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px)  { .kpi-grid { grid-template-columns: 1fr; } }
+
+    .kpi {
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 16px;
+      padding: 1rem 1.25rem;
+      background: rgba(255,255,255,.6);
+      backdrop-filter: blur(4px);
+      display: grid; gap: .35rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,.05);
+    }
+    .kpi .label { font-size: .9rem; opacity: .75; }
+    .kpi .value { font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
+    .kpi .delta { font-size: .9rem; }
+    .up   { color: #0a7a28; }
+    .down { color: #b23a2b; }
+    .flat { opacity: .6; }
+
+    /* Filters */
+    .filters {
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,.6);
+      box-shadow: 0 1px 2px rgba(0,0,0,.05);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .filters h3 { margin: 0 0 .75rem; font-size: 1rem; }
+    .filters-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: 1.2fr 1fr 1fr;
+    }
+    @media (max-width: 900px) { .filters-grid { grid-template-columns: 1fr; } }
+    fieldset { margin: 0; border: 0; padding: 0; }
+    .pillbox { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .pillbox label {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .35rem .6rem; border: 1px solid rgba(0,0,0,.12);
+      border-radius: 999px; cursor: pointer; font-size: .9rem;
+    }
+    .pillbox input { accent-color: #ff7f0e; }
+
+    .range { display: grid; gap: .5rem; }
+    .range-row { display: flex; gap: .5rem; align-items: center; }
+    .range-row input[type="number"] { width: 7rem; padding: .4rem .5rem; }
+    .range-row input[type="date"] { padding: .4rem .5rem; }
+
+    .filters .actions { margin-top: .5rem; display: flex; gap: .5rem; }
+    button {
+      padding: .5rem .75rem; border-radius: 10px; border: 1px solid rgba(0,0,0,.1);
+      background: #fff; cursor: pointer;
+    }
+    button.primary { background: #ff7f0e; color: #fff; border-color: #ff7f0e; }
+
+    /* Charts grid */
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.25rem;
+    }
+    @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+
+    .card {
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,.6);
+      box-shadow: 0 1px 2px rgba(0,0,0,.05);
+      overflow: hidden;
+    }
+    .card header {
+      padding: .9rem 1rem;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+    .card .chart {
+      width: 100%;
+      min-height: 420px;
+      padding: .5rem 1rem 1rem;
+    }
   </style>
 </head>
 <body>
-  <div class="page">
-    <h1>Sample Vega(-Lite) Charts</h1>
+  <header>
+    <div class="wrap">
+      <h1 style="margin:0;font-size:1.4rem;">Vega-Lite Dashboard</h1>
+    </div>
+  </header>
 
-    <h2>Bar Chart (Vega-Lite, Orange)</h2>
-    <div id="barChart" class="chart"></div>
+  <main class="wrap">
+    <!-- KPI boxes -->
+    <section class="kpi-grid">
+      <div class="kpi">
+        <div class="label">Total Points</div>
+        <div class="value" id="kpi-total">—</div>
+        <div class="delta flat" id="kpi-total-delta">■ 0.0%</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Average Value</div>
+        <div class="value" id="kpi-avg">—</div>
+        <div class="delta flat" id="kpi-avg-delta">■ 0.0%</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Max Value</div>
+        <div class="value" id="kpi-max">—</div>
+        <div class="delta flat" id="kpi-max-delta">■ 0.0%</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Min Value</div>
+        <div class="value" id="kpi-min">—</div>
+        <div class="delta flat" id="kpi-min-delta">■ 0.0%</div>
+      </div>
+    </section>
 
-    <h2>Bar Chart with Pattern (Vega, Orange hatch)</h2>
-    <div id="barPattern" class="chart"></div>
+    <!-- Filters -->
+    <section class="filters" id="filters">
+      <h3>Filters</h3>
+      <div class="filters-grid">
+        <fieldset>
+          <legend style="margin-bottom:.5rem;opacity:.8;">Categories</legend>
+          <div class="pillbox" id="cat-box">
+            <!-- checkboxes injected by JS -->
+          </div>
+        </fieldset>
 
-    <h2>Line Chart</h2>
-    <div id="lineChart" class="chart"></div>
+        <fieldset class="range">
+          <legend style="margin-bottom:.25rem;opacity:.8;">Value Range</legend>
+          <div class="range-row">
+            <label for="valMin">Min</label>
+            <input id="valMin" type="number" step="1" />
+            <label for="valMax">Max</label>
+            <input id="valMax" type="number" step="1" />
+          </div>
+        </fieldset>
 
-    <h2>Scatter Plot</h2>
-    <div id="scatterChart" class="chart"></div>
+        <fieldset class="range">
+          <legend style="margin-bottom:.25rem;opacity:.8;">Date Range (Time Series)</legend>
+          <div class="range-row">
+            <label for="dateStart">Start</label>
+            <input id="dateStart" type="date" />
+            <label for="dateEnd">End</label>
+            <input id="dateEnd" type="date" />
+          </div>
+        </fieldset>
+      </div>
+      <div class="actions">
+        <button class="primary" id="applyBtn">Apply</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+    </section>
 
-    <h2>Rolling Average over Raw Values</h2>
-    <div id="rollingChart" class="chart"></div>
-  </div>
+    <!-- Charts -->
+    <section class="charts">
+      <div class="card">
+        <header>Bar Chart (Orange)</header>
+        <div id="barChart" class="chart"></div>
+      </div>
+      <div class="card">
+        <header>Line Chart</header>
+        <div id="lineChart" class="chart"></div>
+      </div>
+      <div class="card">
+        <header>Scatter Plot</header>
+        <div id="scatterChart" class="chart"></div>
+      </div>
+      <div class="card">
+        <header>Rolling Average over Raw Values</header>
+        <div id="rollingChart" class="chart"></div>
+      </div>
+    </section>
+  </main>
 
   <script>
-    // Common options for embedding
-    const embedOpts = { actions: { export: true, source: true, editor: true } };
+    // -------- Data (master copies) --------
+    const ALL_CATS = ["A","B","C","D","E","F","G","H"];
 
-    // Base for Vega-Lite specs (responsive)
+    const dataBar = [
+      {category:"A", value:30}, {category:"B", value:55},
+      {category:"C", value:43}, {category:"D", value:91},
+      {category:"E", value:70}, {category:"F", value:38}
+    ];
+
+    // Use consistent 'value' field across charts for global value filter
+    const dataLine = [
+      {x:0, value:2, category:"A"}, {x:1, value:6, category:"B"},
+      {x:2, value:3, category:"C"}, {x:3, value:10, category:"D"},
+      {x:4, value:7, category:"E"}, {x:5, value:12, category:"F"},
+      {x:6, value:9, category:"G"}
+    ];
+
+    const dataScatter = [
+      {x:1, value:2, category:"A"}, {x:2, value:3, category:"B"},
+      {x:3, value:5, category:"C"}, {x:4, value:4, category:"D"},
+      {x:5, value:7, category:"E"}, {x:6, value:6, category:"F"},
+      {x:7, value:4, category:"G"}, {x:7, value:7, category:"H"}
+    ];
+
+    const dataTime = [
+      {date:"2025-09-01", value:12, category:"A"},{date:"2025-09-02", value:18, category:"B"},
+      {date:"2025-09-03", value:10, category:"C"},{date:"2025-09-04", value:22, category:"D"},
+      {date:"2025-09-05", value:16, category:"E"},{date:"2025-09-06", value:24, category:"F"},
+      {date:"2025-09-07", value:20, category:"G"},{date:"2025-09-08", value:26, category:"H"},
+      {date:"2025-09-09", value:19, category:"A"},{date:"2025-09-10", value:28, category:"B"},
+      {date:"2025-09-11", value:25, category:"C"},{date:"2025-09-12", value:29, category:"D"},
+      {date:"2025-09-13", value:21, category:"E"},{date:"2025-09-14", value:30, category:"F"},
+      {date:"2025-09-15", value:27, category:"G"},{date:"2025-09-16", value:33, category:"H"},
+      {date:"2025-09-17", value:26, category:"A"},{date:"2025-09-18", value:35, category:"B"},
+      {date:"2025-09-19", value:31, category:"C"},{date:"2025-09-20", value:34, category:"D"}
+    ];
+
+    // Defaults for value range/date range
+    const VALUE_MIN = 0, VALUE_MAX = 100;
+    const DATE_MIN = "2025-09-01", DATE_MAX = "2025-09-30";
+
+    // ----- UI wiring: build category checkboxes -----
+    const catBox = document.getElementById("cat-box");
+    ALL_CATS.forEach(c => {
+      const id = `cat_${c}`;
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" id="${id}" value="${c}" checked /> ${c}`;
+      catBox.appendChild(label);
+    });
+
+    // set range defaults
+    const valMinEl = document.getElementById("valMin");
+    const valMaxEl = document.getElementById("valMax");
+    valMinEl.value = VALUE_MIN; valMaxEl.value = 100; // wide default
+
+    const dateStartEl = document.getElementById("dateStart");
+    const dateEndEl = document.getElementById("dateEnd");
+    dateStartEl.value = DATE_MIN; dateEndEl.value = DATE_MAX;
+
+    // ----- Helpers: read filters, filter data, KPIs, render charts -----
+    function getFilters() {
+      const selectedCats = Array.from(catBox.querySelectorAll('input[type=checkbox]:checked')).map(i => i.value);
+      const vmin = Number(valMinEl.value || VALUE_MIN);
+      const vmax = Number(valMaxEl.value || VALUE_MAX);
+      const dmin = dateStartEl.value || DATE_MIN;
+      const dmax = dateEndEl.value || DATE_MAX;
+      return { selectedCats, vmin, vmax, dmin, dmax };
+    }
+
+    function inValueRange(v, vmin, vmax) { return (v >= vmin && v <= vmax); }
+    function inCat(cat, cats) { return cats.includes(cat); }
+    function inDate(d, dmin, dmax) { return (!d || (d >= dmin && d <= dmax)); }
+
+    function applyFilters(filters) {
+      const { selectedCats, vmin, vmax, dmin, dmax } = filters;
+
+      const bar = dataBar.filter(r => inCat(r.category, selectedCats) && inValueRange(r.value, vmin, vmax));
+      const line = dataLine.filter(r => inCat(r.category, selectedCats) && inValueRange(r.value, vmin, vmax));
+      const scat = dataScatter.filter(r => inCat(r.category, selectedCats) && inValueRange(r.value, vmin, vmax));
+      const time = dataTime
+        .filter(r => inCat(r.category, selectedCats) && inValueRange(r.value, vmin, vmax) && inDate(r.date, dmin, dmax));
+
+      return { bar, line, scat, time };
+    }
+
+    function updateKPIs(filtered) {
+      const all = [...filtered.bar, ...filtered.line, ...filtered.scat, ...filtered.time];
+      const total = all.length;
+      const values = all.map(d => d.value);
+      const avg = values.length ? values.reduce((a,b)=>a+b,0)/values.length : 0;
+      const max = values.length ? Math.max(...values) : 0;
+      const min = values.length ? Math.min(...values) : 0;
+
+      document.getElementById('kpi-total').textContent = total.toLocaleString();
+      document.getElementById('kpi-avg').textContent = avg.toFixed(2);
+      document.getElementById('kpi-max').textContent = max.toFixed(0);
+      document.getElementById('kpi-min').textContent = min.toFixed(0);
+
+      // Deltas are placeholders; wire to previous-period logic if you have it.
+      ["total","avg","max","min"].forEach(k => {
+        const el = document.getElementById(`kpi-${k}-delta`);
+        el.className = "delta flat";
+        el.textContent = "■ 0.0%";
+      });
+    }
+
     const base = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
       autosize: { type: "fit", contains: "padding" },
       width: "container",
       height: 400
     };
+    const embedOpts = { actions: { export: true, source: true, editor: true } };
 
-    // 1) Bar chart (Vega-Lite) — orange bars
-    const barSpec = {
-      ...base,
-      data: { values: [
-        {category:"A", value:30}, {category:"B", value:55},
-        {category:"C", value:43}, {category:"D", value:91},
-        {category:"E", value:70}, {category:"F", value:38}
-      ]},
-      mark: { type: "bar", color: "#ff7f0e", cornerRadiusTopLeft: 6, cornerRadiusTopRight: 6 },
-      encoding: {
-        x: { field: "category", type: "nominal", axis: { labelAngle: 0, title: "Category" }},
-        y: { field: "value", type: "quantitative", axis: { title: "Value" }},
-        tooltip: [{field:"category"}, {field:"value"}]
-      }
-    };
-
-// 1b) Bar chart with stripes (Vega) — works without plugins
-const barPatternVega = {
-  $schema: "https://vega.github.io/schema/vega/v5.json",
-  width: 900,
-  height: 400,
-  padding: 5,
-  autosize: { type: "fit", contains: "padding" },
-
-  data: [
-    {
-      name: "table",
-      values: [
-        {category:"A", value:30}, {category:"B", value:55},
-        {category:"C", value:43}, {category:"D", value:91},
-        {category:"E", value:70}, {category:"F", value:38}
-      ]
-    },
-    // a small helper dataset to create stripe columns inside each bar
-    {
-      name: "stripes",
-      values: Array.from({length: 10}, (_, i) => ({i})) // 10 stripes per bar
-    }
-  ],
-
-  scales: [
-    { name: "x", type: "band", domain: { data: "table", field: "category" }, range: "width", padding: 0.15 },
-    { name: "y", type: "linear", domain: { data: "table", field: "value" }, nice: true, range: "height" }
-  ],
-
-  axes: [
-    { orient: "bottom", scale: "x", labelAngle: 0, title: "Category" },
-    { orient: "left", scale: "y", title: "Value" }
-  ],
-
-  marks: [
-    // Base orange bar (light tone so stripes pop)
-    {
-      type: "rect",
-      from: { data: "table" },
-      encode: {
-        update: {
-          x:   { scale: "x", field: "category" },
-          width:{ scale: "x", band: 1 },
-          y:   { scale: "y", field: "value" },
-          y2:  { scale: "y", value: 0 },
-          fill:{ value: "#ffb585" } // light orange
+    function renderCharts(filtered) {
+      const barSpec = {
+        ...base,
+        data: { values: filtered.bar },
+        mark: { type: "bar", color: "#ff7f0e", cornerRadiusTopLeft: 6, cornerRadiusTopRight: 6 },
+        encoding: {
+          x: { field: "category", type: "nominal", axis: { labelAngle: 0, title: "Category" }},
+          y: { field: "value", type: "quantitative", axis: { title: "Value" }},
+          tooltip: [{field:"category"}, {field:"value"}]
         }
-      }
-    },
+      };
 
-    // Group per bar to draw vertical stripes clipped to the bar box
-    {
-      type: "group",
-      from: { data: "table" },
-      encode: {
-        update: {
-          x:     { scale: "x", field: "category" },
-          y:     { scale: "y", field: "value" },
-          width: { scale: "x", band: 1 },
-          height:{ signal: "scale('y', 0) - scale('y', datum.value)" },
-          clip:  { value: true }
+      const lineSpec = {
+        ...base,
+        data: { values: filtered.line },
+        mark: { type: "line", point: true },
+        encoding: {
+          x: { field: "x", type: "quantitative", title: "X" },
+          y: { field: "value", type: "quantitative", title: "Value" },
+          color: { field: "category", type: "nominal", legend: { title: "Category" } },
+          tooltip: [{field:"x"}, {field:"value"}, {field:"category"}]
         }
-      },
-      scales: [
-        // local band scale across the bar's width
-        { name: "stripeX", type: "band", domain: { data: "stripes", field: "i" }, range: "width", padding: 0.2 }
-      ],
-      marks: [
-        {
-          type: "rect",
-          from: { data: "stripes" },
-          encode: {
-            update: {
-              x:     { scale: "stripeX", field: "i" },
-              width: { signal: "bandwidth('stripeX') * 0.5" }, // thin stripes
-              y:     { value: 0 },
-              y2:    { field: { group: "height" } },
-              fill:  { value: "#ff7f0e" },   // main orange
-              fillOpacity: { value: 0.55 }
+      };
+
+      const scatterSpec = {
+        ...base,
+        data: { values: filtered.scat },
+        mark: "point",
+        encoding: {
+          x: { field: "x", type: "quantitative" },
+          y: { field: "value", type: "quantitative" },
+          color: { field: "category", type: "nominal", legend: { title: "Category" } },
+          tooltip: [{field:"x"}, {field:"value"}, {field:"category"}]
+        }
+      };
+
+      const rollingSpec = {
+        ...base,
+        data: { values: filtered.time },
+        transform: [
+          { window: [{ op: "mean", field: "value", as: "rolling_7d" }], frame: [-6, 0], sort: [{ field: "date", order: "ascending" }] }
+        ],
+        layer: [
+          { mark: { type: "line", interpolate: "monotone", opacity: 0.45 },
+            encoding: {
+              x: { field: "date", type: "temporal", title: "Date" },
+              y: { field: "value", type: "quantitative", title: "Value" },
+              color: { field: "category", type: "nominal", legend: { title: "Category" } },
+              tooltip: [{ field: "date", type: "temporal" }, { field: "value", type: "quantitative" }, { field: "category", type: "nominal"}]
+            }
+          },
+          { mark: { type: "point", filled: true, opacity: 0.35, size: 40 },
+            encoding: { x: { field: "date", type: "temporal" }, y: { field: "value", type: "quantitative" }, color: { field: "category", type: "nominal" } }
+          },
+          { mark: { type: "line", strokeWidth: 3 },
+            encoding: {
+              x: { field: "date", type: "temporal" },
+              y: { field: "rolling_7d", type: "quantitative", title: "Value (7-day avg)" },
+              color: { value: "#333" },
+              tooltip: [{ field: "date", type: "temporal" }, { field: "rolling_7d", type: "quantitative", title: "7-day Avg", format: ".2f" }]
             }
           }
-        }
-      ]
-    },
+        ]
+      };
 
-    // Optional outline for crisp edges
-    {
-      type: "rect",
-      from: { data: "table" },
-      encode: {
-        update: {
-          x: { scale: "x", field: "category" },
-          width: { scale: "x", band: 1 },
-          y: { scale: "y", field: "value" },
-          y2: { scale: "y", value: 0 },
-          fill: { value: "transparent" },
-          stroke: { value: "#ff7f0e" },
-          strokeWidth: { value: 1 }
-        }
-      }
+      vegaEmbed("#barChart", barSpec, embedOpts);
+      vegaEmbed("#lineChart", lineSpec, embedOpts);
+      vegaEmbed("#scatterChart", scatterSpec, embedOpts);
+      vegaEmbed("#rollingChart", rollingSpec, embedOpts);
     }
-  ]
-};
 
+    function applyAndRender() {
+      const filters = getFilters();
+      const filtered = applyFilters(filters);
+      updateKPIs(filtered);
+      renderCharts(filtered);
+    }
 
-    // 2) Line
-    const lineSpec = {
-      ...base,
-      data: { values: [
-        {x:0, y:2}, {x:1, y:6}, {x:2, y:3}, {x:3, y:10}, {x:4, y:7}, {x:5, y:12}
-      ]},
-      mark: { type: "line", point: true },
-      encoding: {
-        x: { field: "x", type: "quantitative", title: "X" },
-        y: { field: "y", type: "quantitative", title: "Y" },
-        tooltip: [{field:"x"}, {field:"y"}]
-      }
-    };
+    // Buttons
+    document.getElementById("applyBtn").addEventListener("click", applyAndRender);
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      // reset categories
+      catBox.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
+      // reset ranges
+      valMinEl.value = VALUE_MIN;
+      valMaxEl.value = 100;
+      dateStartEl.value = DATE_MIN;
+      dateEndEl.value = DATE_MAX;
+      applyAndRender();
+    });
 
-    // 3) Scatter
-    const scatterSpec = {
-      ...base,
-      data: { values: [
-        {x:1, y:2, category:"A"}, {x:2, y:3, category:"B"},
-        {x:3, y:5, category:"C"}, {x:4, y:4, category:"D"},
-        {x:5, y:7, category:"E"}, {x:6, y:6, category:"F"},
-        {x:7, y:4, category:"G"}, {x:7, y:7, category:"H"}
-      ]},
-      mark: "point",
-      encoding: {
-        x: { field: "x", type: "quantitative" },
-        y: { field: "y", type: "quantitative" },
-        color: { field: "category", type: "nominal", legend: { title: "Group" } },
-        tooltip: [{field:"x"}, {field:"y"}, {field:"category"}]
-      }
-    };
-
-    // 4) Rolling average over raw values
-    const rawSeries = [
-      {date:"2025-09-01", value:12},{date:"2025-09-02", value:18},
-      {date:"2025-09-03", value:10},{date:"2025-09-04", value:22},
-      {date:"2025-09-05", value:16},{date:"2025-09-06", value:24},
-      {date:"2025-09-07", value:20},{date:"2025-09-08", value:26},
-      {date:"2025-09-09", value:19},{date:"2025-09-10", value:28},
-      {date:"2025-09-11", value:25},{date:"2025-09-12", value:29},
-      {date:"2025-09-13", value:21},{date:"2025-09-14", value:30},
-      {date:"2025-09-15", value:27},{date:"2025-09-16", value:33},
-      {date:"2025-09-17", value:26},{date:"2025-09-18", value:35},
-      {date:"2025-09-19", value:31},{date:"2025-09-20", value:34}
-    ];
-
-    const rollingSpec = {
-      ...base,
-      data: { values: rawSeries },
-      transform: [
-        {
-          window: [{ op: "mean", field: "value", as: "rolling_7d" }],
-          frame: [-6, 0],
-          sort: [{ field: "date", order: "ascending" }]
-        }
-      ],
-      layer: [
-        { // raw line
-          mark: { type: "line", interpolate: "monotone", opacity: 0.5 },
-          encoding: {
-            x: { field: "date", type: "temporal", title: "Date" },
-            y: { field: "value", type: "quantitative", title: "Value" },
-            tooltip: [
-              { field: "date", type: "temporal", title: "Date" },
-              { field: "value", type: "quantitative", title: "Raw" }
-            ]
-          }
-        },
-        { // raw points
-          mark: { type: "point", filled: true, opacity: 0.4, size: 40 },
-          encoding: {
-            x: { field: "date", type: "temporal" },
-            y: { field: "value", type: "quantitative" }
-          }
-        },
-        { // rolling avg
-          mark: { type: "line", strokeWidth: 3 },
-          encoding: {
-            x: { field: "date", type: "temporal" },
-            y: { field: "rolling_7d", type: "quantitative", title: "Value (7-day avg)" },
-            tooltip: [
-              { field: "date", type: "temporal", title: "Date" },
-              { field: "rolling_7d", type: "quantitative", title: "7-day Avg", format: ".2f" }
-            ]
-          }
-        }
-      ],
-      resolve: { scale: { y: "shared" } }
-    };
-
-    // Render all charts
-    vegaEmbed("#barChart", barSpec, embedOpts);
-    vegaEmbed("#barPattern", barPatternVega, embedOpts);
-    vegaEmbed("#lineChart", lineSpec, embedOpts);
-    vegaEmbed("#scatterChart", scatterSpec, embedOpts);
-    vegaEmbed("#rollingChart", rollingSpec, embedOpts);
+    // Initial render
+    applyAndRender();
   </script>
 </body>
 </html>
