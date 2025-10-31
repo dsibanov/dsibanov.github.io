@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Vega-Lite Dashboard with Global Filters</title>
+  <meta name="color-scheme" content="light dark" />
+  <title>Vega-Lite Dashboard with KPIs & Filters</title>
 
   <!-- CDNs -->
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
@@ -11,10 +12,38 @@
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
 
   <style>
-    :root { color-scheme: light dark; }
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --text: #111111;
+      --border: rgba(0,0,0,.12);
+      --card: #ffffff;
+      --shadow: 0 1px 2px rgba(0,0,0,.05);
+      --accent: #ff7f0e; /* orange bars + primary buttons */
+      --muted: rgba(0,0,0,.55);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0c0f12;
+        --text: #e6eaef;
+        --border: rgba(255,255,255,.16);
+        --card: #141a20;
+        --shadow: 0 1px 2px rgba(0,0,0,.6);
+        --muted: #aab4c1;
+      }
+    }
+
     * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; background: var(--bg, #fff); }
-    header { padding: 1rem 1.25rem; border-bottom: 1px solid rgba(0,0,0,.08); }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
     .wrap { max-width: 1280px; margin: 0 auto; padding: 1.25rem; }
 
     /* KPI cards */
@@ -28,27 +57,27 @@
     @media (max-width: 560px)  { .kpi-grid { grid-template-columns: 1fr; } }
 
     .kpi {
-      border: 1px solid rgba(0,0,0,.08);
+      border: 1px solid var(--border);
       border-radius: 16px;
+      background: var(--card);
+      box-shadow: var(--shadow);
       padding: 1rem 1.25rem;
-      background: rgba(255,255,255,.6);
-      backdrop-filter: blur(4px);
-      display: grid; gap: .35rem;
-      box-shadow: 0 1px 2px rgba(0,0,0,.05);
+      display: grid;
+      gap: .35rem;
     }
-    .kpi .label { font-size: .9rem; opacity: .75; }
+    .kpi .label { font-size: .9rem; color: var(--muted); }
     .kpi .value { font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
     .kpi .delta { font-size: .9rem; }
     .up   { color: #0a7a28; }
     .down { color: #b23a2b; }
-    .flat { opacity: .6; }
+    .flat { opacity: .7; }
 
     /* Filters */
     .filters {
-      border: 1px solid rgba(0,0,0,.08);
+      border: 1px solid var(--border);
       border-radius: 16px;
-      background: rgba(255,255,255,.6);
-      box-shadow: 0 1px 2px rgba(0,0,0,.05);
+      background: var(--card);
+      box-shadow: var(--shadow);
       padding: 1rem 1.25rem;
       margin-bottom: 1.25rem;
     }
@@ -63,22 +92,25 @@
     .pillbox { display: flex; flex-wrap: wrap; gap: .5rem; }
     .pillbox label {
       display: inline-flex; align-items: center; gap: .35rem;
-      padding: .35rem .6rem; border: 1px solid rgba(0,0,0,.12);
+      padding: .35rem .6rem; border: 1px solid var(--border);
       border-radius: 999px; cursor: pointer; font-size: .9rem;
+      background: var(--card);
     }
-    .pillbox input { accent-color: #ff7f0e; }
+    .pillbox input { accent-color: var(--accent); }
 
     .range { display: grid; gap: .5rem; }
     .range-row { display: flex; gap: .5rem; align-items: center; }
-    .range-row input[type="number"] { width: 7rem; padding: .4rem .5rem; }
-    .range-row input[type="date"] { padding: .4rem .5rem; }
+    .range-row input[type="number"], .range-row input[type="date"] {
+      padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); color: var(--text);
+    }
 
     .filters .actions { margin-top: .5rem; display: flex; gap: .5rem; }
     button {
-      padding: .5rem .75rem; border-radius: 10px; border: 1px solid rgba(0,0,0,.1);
-      background: #fff; cursor: pointer;
+      padding: .5rem .75rem; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text); cursor: pointer;
     }
-    button.primary { background: #ff7f0e; color: #fff; border-color: #ff7f0e; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 
     /* Charts grid */
     .charts {
@@ -89,22 +121,18 @@
     @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
 
     .card {
-      border: 1px solid rgba(0,0,0,.08);
+      border: 1px solid var(--border);
       border-radius: 16px;
-      background: rgba(255,255,255,.6);
-      box-shadow: 0 1px 2px rgba(0,0,0,.05);
+      background: var(--card);
+      box-shadow: var(--shadow);
       overflow: hidden;
     }
     .card header {
       padding: .9rem 1rem;
       font-weight: 600;
-      border-bottom: 1px solid rgba(0,0,0,.06);
+      border-bottom: 1px solid var(--border);
     }
-    .card .chart {
-      width: 100%;
-      min-height: 420px;
-      padding: .5rem 1rem 1rem;
-    }
+    .card .chart { width: 100%; min-height: 420px; padding: .5rem 1rem 1rem; }
   </style>
 </head>
 <body>
@@ -120,7 +148,7 @@
       <div class="kpi">
         <div class="label">Total Points</div>
         <div class="value" id="kpi-total">—</div>
-        <div class="delta flat" id="kpi-total-delta">■ 0.0%</div>
+        <div class="delta flat" id="kpi-total-delta">■ 0.0%</</div>
       </div>
       <div class="kpi">
         <div class="label">Average Value</div>
@@ -130,7 +158,7 @@
       <div class="kpi">
         <div class="label">Max Value</div>
         <div class="value" id="kpi-max">—</div>
-        <div class="delta flat" id="kpi-max-delta">■ 0.0%</div>
+        <div class="delta flat" id="kpi-max-delta">■ 0.0%</</div>
       </div>
       <div class="kpi">
         <div class="label">Min Value</div>
@@ -145,9 +173,7 @@
       <div class="filters-grid">
         <fieldset>
           <legend style="margin-bottom:.5rem;opacity:.8;">Categories</legend>
-          <div class="pillbox" id="cat-box">
-            <!-- checkboxes injected by JS -->
-          </div>
+          <div class="pillbox" id="cat-box"><!-- checkboxes injected by JS --></div>
         </fieldset>
 
         <fieldset class="range">
@@ -198,7 +224,17 @@
   </main>
 
   <script>
-    // -------- Data (master copies) --------
+    // ===== Dark-mode aware Vega-Lite config =====
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const vlConfig = prefersDark
+      ? {
+          background: null,
+          axis:   { labelColor: '#e6eaef', titleColor: '#e6eaef', domainColor: '#5b6775', tickColor: '#5b6775' },
+          legend: { labelColor: '#e6eaef', titleColor: '#e6eaef' }
+        }
+      : { background: null };
+
+    // ===== Data (master) =====
     const ALL_CATS = ["A","B","C","D","E","F","G","H"];
 
     const dataBar = [
@@ -207,7 +243,7 @@
       {category:"E", value:70}, {category:"F", value:38}
     ];
 
-    // Use consistent 'value' field across charts for global value filter
+    // Use consistent `value` across charts to reuse filters
     const dataLine = [
       {x:0, value:2, category:"A"}, {x:1, value:6, category:"B"},
       {x:2, value:3, category:"C"}, {x:3, value:10, category:"D"},
@@ -235,11 +271,11 @@
       {date:"2025-09-19", value:31, category:"C"},{date:"2025-09-20", value:34, category:"D"}
     ];
 
-    // Defaults for value range/date range
+    // Defaults
     const VALUE_MIN = 0, VALUE_MAX = 100;
     const DATE_MIN = "2025-09-01", DATE_MAX = "2025-09-30";
 
-    // ----- UI wiring: build category checkboxes -----
+    // ===== Build category checkboxes =====
     const catBox = document.getElementById("cat-box");
     ALL_CATS.forEach(c => {
       const id = `cat_${c}`;
@@ -248,16 +284,16 @@
       catBox.appendChild(label);
     });
 
-    // set range defaults
+    // Range defaults
     const valMinEl = document.getElementById("valMin");
     const valMaxEl = document.getElementById("valMax");
-    valMinEl.value = VALUE_MIN; valMaxEl.value = 100; // wide default
+    valMinEl.value = VALUE_MIN; valMaxEl.value = 100;
 
     const dateStartEl = document.getElementById("dateStart");
     const dateEndEl = document.getElementById("dateEnd");
     dateStartEl.value = DATE_MIN; dateEndEl.value = DATE_MAX;
 
-    // ----- Helpers: read filters, filter data, KPIs, render charts -----
+    // ===== Helpers =====
     function getFilters() {
       const selectedCats = Array.from(catBox.querySelectorAll('input[type=checkbox]:checked')).map(i => i.value);
       const vmin = Number(valMinEl.value || VALUE_MIN);
@@ -266,20 +302,18 @@
       const dmax = dateEndEl.value || DATE_MAX;
       return { selectedCats, vmin, vmax, dmin, dmax };
     }
-
-    function inValueRange(v, vmin, vmax) { return (v >= vmin && v <= vmax); }
-    function inCat(cat, cats) { return cats.includes(cat); }
-    function inDate(d, dmin, dmax) { return (!d || (d >= dmin && d <= dmax)); }
+    const inValueRange = (v, vmin, vmax) => v >= vmin && v <= vmax;
+    const inCat = (cat, cats) => cats.includes(cat);
+    const inDate = (d, dmin, dmax) => !d || (d >= dmin && d <= dmax);
 
     function applyFilters(filters) {
       const { selectedCats, vmin, vmax, dmin, dmax } = filters;
-
       const bar = dataBar.filter(r => inCat(r.category, selectedCats) && inValueRange(r.value, vmin, vmax));
       const line = dataLine.filter(r => inCat(r.category, selectedCats) && inValueRange(r.value, vmin, vmax));
       const scat = dataScatter.filter(r => inCat(r.category, selectedCats) && inValueRange(r.value, vmin, vmax));
-      const time = dataTime
-        .filter(r => inCat(r.category, selectedCats) && inValueRange(r.value, vmin, vmax) && inDate(r.date, dmin, dmax));
-
+      const time = dataTime.filter(r =>
+        inCat(r.category, selectedCats) && inValueRange(r.value, vmin, vmax) && inDate(r.date, dmin, dmax)
+      );
       return { bar, line, scat, time };
     }
 
@@ -296,19 +330,20 @@
       document.getElementById('kpi-max').textContent = max.toFixed(0);
       document.getElementById('kpi-min').textContent = min.toFixed(0);
 
-      // Deltas are placeholders; wire to previous-period logic if you have it.
+      // Placeholder deltas
       ["total","avg","max","min"].forEach(k => {
         const el = document.getElementById(`kpi-${k}-delta`);
-        el.className = "delta flat";
-        el.textContent = "■ 0.0%";
+        if (el) { el.className = "delta flat"; el.textContent = "■ 0.0%"; }
       });
     }
 
+    // ===== Base spec + embed opts (include dark-mode config) =====
     const base = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
       autosize: { type: "fit", contains: "padding" },
       width: "container",
-      height: 400
+      height: 400,
+      config: vlConfig
     };
     const embedOpts = { actions: { export: true, source: true, editor: true } };
 
@@ -316,7 +351,7 @@
       const barSpec = {
         ...base,
         data: { values: filtered.bar },
-        mark: { type: "bar", color: "#ff7f0e", cornerRadiusTopLeft: 6, cornerRadiusTopRight: 6 },
+        mark: { type: "bar", color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#ff7f0e', cornerRadiusTopLeft: 6, cornerRadiusTopRight: 6 },
         encoding: {
           x: { field: "category", type: "nominal", axis: { labelAngle: 0, title: "Category" }},
           y: { field: "value", type: "quantitative", axis: { title: "Value" }},
@@ -370,7 +405,7 @@
             encoding: {
               x: { field: "date", type: "temporal" },
               y: { field: "rolling_7d", type: "quantitative", title: "Value (7-day avg)" },
-              color: { value: "#333" },
+              color: { value: prefersDark ? '#e6eaef' : '#333' },
               tooltip: [{ field: "date", type: "temporal" }, { field: "rolling_7d", type: "quantitative", title: "7-day Avg", format: ".2f" }]
             }
           }
@@ -393,9 +428,7 @@
     // Buttons
     document.getElementById("applyBtn").addEventListener("click", applyAndRender);
     document.getElementById("resetBtn").addEventListener("click", () => {
-      // reset categories
       catBox.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
-      // reset ranges
       valMinEl.value = VALUE_MIN;
       valMaxEl.value = 100;
       dateStartEl.value = DATE_MIN;
@@ -405,6 +438,11 @@
 
     // Initial render
     applyAndRender();
+
+    // Optional: live-respond to OS theme changes without reload
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => location.reload());
+    }
   </script>
 </body>
 </html>
