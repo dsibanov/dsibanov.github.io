@@ -364,16 +364,23 @@
       };
 
       const lineSpec = {
-        ...base,
-        data: { values: filtered.line },
-        mark: { type: "line", point: true },
-        encoding: {
-          x: { field: "x", type: "quantitative", title: "X" },
-          y: { field: "value", type: "quantitative", title: "Value" },
-          color: { field: "category", type: "nominal", legend: { title: "Category" } },
-          tooltip: [{field:"x"}, {field:"value"}, {field:"category"}]
-        }
-      };
+  ...base,
+  data: { values: filtered.line },
+  mark: {
+    type: "line",
+    point: {
+      filled: true,
+      size: 120,
+      shape: "diamond"
+    }
+  },
+  encoding: {
+    x: { field: "x", type: "quantitative", title: "X" },
+    y: { field: "value", type: "quantitative", title: "Value" },
+    color: { field: "category", type: "nominal", legend: { title: "Category" } },
+    tooltip: [{ field: "x" }, { field: "value" }, { field: "category" }]
+  }
+};
 
       const scatterSpec = {
         ...base,
