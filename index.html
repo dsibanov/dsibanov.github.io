@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
-  <title>Dmitri's Vega-Lite Dashboard with KPIs & Filters</title>
+  <title>Analytics Dashboard</title>
 
   <!-- CDNs -->
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
@@ -14,229 +14,657 @@
   <style>
     :root {
       color-scheme: light dark;
-      --bg: #ffffff;
-      --text: #111111;
-      --border: rgba(0,0,0,.12);
+      /* Light mode - Apple style */
+      --bg: #f5f5f7;
+      --text: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --border: rgba(0,0,0,.08);
       --card: #ffffff;
-      --shadow: 0 1px 2px rgba(0,0,0,.05);
-      --accent: #ff7f0e; /* orange bars + primary buttons */
-      --muted: rgba(0,0,0,.55);
+      --shadow: 0 2px 8px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-hover: 0 4px 16px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.08);
+      --accent: #0071e3; /* Apple blue */
+      --accent-hover: #0077ed;
+      --success: #30d158;
+      --warning: #ff9f0a;
+      --radius: 18px;
+      --radius-sm: 12px;
     }
+    
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #0c0f12;
-        --text: #e6eaef;
-        --border: rgba(255,255,255,.16);
-        --card: #141a20;
-        --shadow: 0 1px 2px rgba(0,0,0,.6);
-        --muted: #aab4c1;
+        --bg: #000000;
+        --text: #f5f5f7;
+        --text-secondary: #a1a1a6;
+        --border: rgba(255,255,255,.12);
+        --card: #1d1d1f;
+        --shadow: 0 2px 8px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.5);
+        --shadow-hover: 0 4px 16px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.6);
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --success: #30d158;
+        --warning: #ff9f0a;
       }
     }
 
-    * { box-sizing: border-box; }
-    body {
+    * { 
+      box-sizing: border-box;
       margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.5;
     }
+    
     header {
-      padding: 1rem 1.25rem;
+      padding: 2rem 0 1.5rem;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(245, 245, 247, 0.8);
       border-bottom: 1px solid var(--border);
     }
-    .wrap { max-width: 1280px; margin: 0 auto; padding: 1.25rem; }
+    
+    @media (prefers-color-scheme: dark) {
+      header {
+        background: rgba(0, 0, 0, 0.8);
+      }
+    }
+    
+    .wrap { 
+      max-width: 1400px; 
+      margin: 0 auto; 
+      padding: 0 1.5rem; 
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+    
+    .subtitle {
+      font-size: 1.125rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
 
-    /* KPI cards */
+    /* KPI cards - Apple style */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.25rem;
+      gap: 1.25rem;
+      margin: 2rem 0;
     }
-    @media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 560px)  { .kpi-grid { grid-template-columns: 1fr; } }
+    
+    @media (max-width: 1100px) { 
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); } 
+    }
+    
+    @media (max-width: 600px) { 
+      .kpi-grid { grid-template-columns: 1fr; } 
+    }
 
     .kpi {
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: var(--radius);
       background: var(--card);
       box-shadow: var(--shadow);
-      padding: 1rem 1.25rem;
-      display: grid;
-      gap: .35rem;
+      padding: 1.5rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .kpi .label { font-size: .9rem; color: var(--muted); }
-    .kpi .value { font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
-    .kpi .delta { font-size: .9rem; }
-    .up   { color: #0a7a28; }
-    .down { color: #b23a2b; }
-    .flat { opacity: .7; }
+    
+    .kpi:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+    
+    .kpi .label { 
+      font-size: 0.875rem; 
+      color: var(--text-secondary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.75rem;
+    }
+    
+    .kpi .value { 
+      font-size: 2.5rem; 
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+    
+    .kpi .delta { 
+      font-size: 0.9375rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    .up { color: var(--success); }
+    .down { color: #ff3b30; }
+    .flat { color: var(--text-secondary); }
 
-    /* Filters */
+    /* Filters - Apple style */
     .filters {
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: var(--radius);
       background: var(--card);
       box-shadow: var(--shadow);
-      padding: 1rem 1.25rem;
-      margin-bottom: 1.25rem;
+      padding: 0;
+      margin-bottom: 2rem;
+      overflow: hidden;
     }
-    .filters h3 { margin: 0 0 .75rem; font-size: 1rem; }
+    
+    .filters-header {
+      padding: 1.5rem 1.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .filters-header h3 { 
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+    
+    .filter-badge {
+      background: var(--accent);
+      color: white;
+      padding: 0.25rem 0.625rem;
+      border-radius: 999px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      min-width: 1.5rem;
+      text-align: center;
+    }
+    
+    .filters-content {
+      padding: 1.75rem;
+    }
+    
     .filters-grid {
       display: grid;
-      gap: 1rem;
-      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 1.25rem;
+      grid-template-columns: 1.5fr 1fr 1fr;
     }
-    @media (max-width: 900px) { .filters-grid { grid-template-columns: 1fr; } }
-    fieldset { margin: 0; border: 0; padding: 0; }
-    .pillbox { display: flex; flex-wrap: wrap; gap: .5rem; }
+    
+    @media (max-width: 1000px) { 
+      .filters-grid { grid-template-columns: 1fr; } 
+    }
+    
+    fieldset { 
+      margin: 0; 
+      border: 0; 
+      padding: 0; 
+    }
+    
+    .filter-section {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1.25rem;
+      background: var(--bg);
+    }
+    
+    .filter-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    
+    legend {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+    
+    .filter-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .filter-link {
+      font-size: 0.875rem;
+      color: var(--accent);
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-weight: 500;
+      transition: opacity 0.2s ease;
+    }
+    
+    .filter-link:hover {
+      opacity: 0.7;
+      transform: none;
+    }
+    
+    .pillbox { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 0.625rem; 
+    }
+    
     .pillbox label {
-      display: inline-flex; align-items: center; gap: .35rem;
-      padding: .35rem .6rem; border: 1px solid var(--border);
-      border-radius: 999px; cursor: pointer; font-size: .9rem;
+      display: inline-flex; 
+      align-items: center; 
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9375rem;
+      font-weight: 500;
       background: var(--card);
+      transition: all 0.2s ease;
+      user-select: none;
     }
-    .pillbox input { accent-color: var(--accent); }
-
-    .range { display: grid; gap: .5rem; }
-    .range-row { display: flex; gap: .5rem; align-items: center; }
-    .range-row input[type="number"], .range-row input[type="date"] {
-      padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 8px;
-      background: var(--bg); color: var(--text);
+    
+    .pillbox label:has(input:checked) {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    
+    .pillbox label:hover {
+      border-color: var(--accent);
+    }
+    
+    .pillbox input { 
+      accent-color: var(--accent);
+      cursor: pointer;
+      margin: 0;
     }
 
-    .filters .actions { margin-top: .5rem; display: flex; gap: .5rem; }
+    .range-inputs { 
+      display: grid; 
+      gap: 0.75rem; 
+    }
+    
+    .input-group {
+      display: grid;
+      grid-template-columns: 4rem 1fr;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    
+    .input-group label {
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    
+    .input-group input[type="number"], 
+    .input-group input[type="date"] {
+      padding: 0.625rem 0.875rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.9375rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+    
+    .input-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .input-group input:focus {
+        box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+      }
+    }
+
+    .filters .actions { 
+      margin-top: 0;
+      display: flex;
+      gap: 0.75rem;
+      padding: 1.25rem 1.75rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+    
+    .active-filters {
+      padding: 1rem 1.75rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: none;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    
+    .active-filters.show {
+      display: flex;
+    }
+    
+    .active-filters-label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-right: 0.5rem;
+    }
+    
+    .filter-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.375rem 0.75rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+    
+    .filter-tag-remove {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      font-size: 1rem;
+      line-height: 1;
+      margin: 0;
+    }
+    
+    .filter-tag-remove:hover {
+      color: var(--text);
+      transform: none;
+    }
+    
     button {
-      padding: .5rem .75rem; border-radius: 10px; border: 1px solid var(--border);
-      background: var(--card); color: var(--text); cursor: pointer;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius-sm);
+      border: none;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
-    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    
+    button:hover {
+      background: var(--card);
+      transform: translateY(-1px);
+    }
+    
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+    
+    button.primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+    
+    button:active {
+      transform: scale(0.98);
+    }
 
-    /* Charts grid */
+    /* Charts grid - Apple style */
     .charts {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1.25rem;
+      gap: 1.5rem;
+      margin-bottom: 3rem;
     }
-    @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+    
+    @media (max-width: 1000px) { 
+      .charts { grid-template-columns: 1fr; } 
+    }
 
     .card {
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: var(--radius);
       background: var(--card);
       box-shadow: var(--shadow);
       overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    
+    .card:hover {
+      box-shadow: var(--shadow-hover);
+    }
+    
     .card header {
-      padding: .9rem 1rem;
+      padding: 1.25rem 1.5rem;
       font-weight: 600;
+      font-size: 1.125rem;
       border-bottom: 1px solid var(--border);
+      letter-spacing: -0.01em;
     }
-    .card .chart { width: 100%; min-height: 420px; padding: .5rem 1rem 1rem; }
+    
+    .card .chart { 
+      width: 100%;
+      min-height: 420px;
+      padding: 1.5rem;
+    }
+    
+    /* Vega embed actions menu styling */
+    .card :global(.vega-actions) {
+      background: var(--card) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: var(--radius-sm) !important;
+      box-shadow: var(--shadow) !important;
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
-      <h1 style="margin:0;font-size:1.4rem;">Vega-Lite Dashboard Showcase</h1>
+      <h1>Analytics</h1>
+      <p class="subtitle">Performance metrics and insights</p>
     </div>
   </header>
 
   <main class="wrap">
     <!-- KPI boxes -->
-<section class="kpi-grid">
-  <div class="kpi">
-    <div class="label">Total Points</div>
-    <div class="value" id="kpi-total">—</div>
-    <div class="delta flat" id="kpi-total-delta">■ 0.0%</div>
-  </div>
+    <section class="kpi-grid">
+      <div class="kpi">
+        <div class="label">Total Points</div>
+        <div class="value" id="kpi-total">—</div>
+        <div class="delta flat" id="kpi-total-delta">● 0.0%</div>
+      </div>
 
-  <div class="kpi">
-    <div class="label">Average Value</div>
-    <div class="value" id="kpi-avg">—</div>
-    <div class="delta flat" id="kpi-avg-delta">■ 0.0%</div>
-  </div>
+      <div class="kpi">
+        <div class="label">Average Value</div>
+        <div class="value" id="kpi-avg">—</div>
+        <div class="delta flat" id="kpi-avg-delta">● 0.0%</div>
+      </div>
 
-  <div class="kpi">
-    <div class="label">Max Value</div>
-    <div class="value" id="kpi-max">—</div>
-    <div class="delta flat" id="kpi-max-delta">■ 0.0%</div>
-  </div>
+      <div class="kpi">
+        <div class="label">Max Value</div>
+        <div class="value" id="kpi-max">—</div>
+        <div class="delta flat" id="kpi-max-delta">● 0.0%</div>
+      </div>
 
-  <div class="kpi">
-    <div class="label">Min Value</div>
-    <div class="value" id="kpi-min">—</div>
-    <div class="delta flat" id="kpi-min-delta">■ 0.0%</div>
-  </div>
-</section>
-
+      <div class="kpi">
+        <div class="label">Min Value</div>
+        <div class="value" id="kpi-min">—</div>
+        <div class="delta flat" id="kpi-min-delta">● 0.0%</div>
+      </div>
+    </section>
 
     <!-- Filters -->
     <section class="filters" id="filters">
-      <h3>Filters</h3>
-      <div class="filters-grid">
-        <fieldset>
-          <legend style="margin-bottom:.5rem;opacity:.8;">Categories</legend>
-          <div class="pillbox" id="cat-box"><!-- checkboxes injected by JS --></div>
-        </fieldset>
-
-        <fieldset class="range">
-          <legend style="margin-bottom:.25rem;opacity:.8;">Value Range</legend>
-          <div class="range-row">
-            <label for="valMin">Min</label>
-            <input id="valMin" type="number" step="1" />
-            <label for="valMax">Max</label>
-            <input id="valMax" type="number" step="1" />
-          </div>
-        </fieldset>
-
-        <fieldset class="range">
-          <legend style="margin-bottom:.25rem;opacity:.8;">Date Range (Time Series)</legend>
-          <div class="range-row">
-            <label for="dateStart">Start</label>
-            <input id="dateStart" type="date" />
-            <label for="dateEnd">End</label>
-            <input id="dateEnd" type="date" />
-          </div>
-        </fieldset>
+      <div class="filters-header">
+        <h3>Filters</h3>
+        <span class="filter-badge" id="filterCount">0</span>
       </div>
+      
+      <div class="active-filters" id="activeFilters">
+        <span class="active-filters-label">Active:</span>
+      </div>
+      
+      <div class="filters-content">
+        <div class="filters-grid">
+          <fieldset class="filter-section">
+            <div class="filter-section-header">
+              <legend>Categories</legend>
+              <div class="filter-actions">
+                <button class="filter-link" id="selectAllCats">Select All</button>
+                <button class="filter-link" id="clearAllCats">Clear All</button>
+              </div>
+            </div>
+            <div class="pillbox" id="cat-box"><!-- checkboxes injected by JS --></div>
+          </fieldset>
+
+          <fieldset class="filter-section">
+            <div class="filter-section-header">
+              <legend>Value Range</legend>
+              <button class="filter-link" id="clearValueRange">Clear</button>
+            </div>
+            <div class="range-inputs">
+              <div class="input-group">
+                <label for="valMin">Min</label>
+                <input id="valMin" type="number" step="1" placeholder="0" />
+              </div>
+              <div class="input-group">
+                <label for="valMax">Max</label>
+                <input id="valMax" type="number" step="1" placeholder="100" />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="filter-section">
+            <div class="filter-section-header">
+              <legend>Date Range</legend>
+              <button class="filter-link" id="clearDateRange">Clear</button>
+            </div>
+            <div class="range-inputs">
+              <div class="input-group">
+                <label for="dateStart">Start</label>
+                <input id="dateStart" type="date" />
+              </div>
+              <div class="input-group">
+                <label for="dateEnd">End</label>
+                <input id="dateEnd" type="date" />
+              </div>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+      
       <div class="actions">
-        <button class="primary" id="applyBtn">Apply</button>
-        <button id="resetBtn">Reset</button>
+        <button class="primary" id="applyBtn">Apply Filters</button>
+        <button id="resetBtn">Reset All</button>
       </div>
     </section>
 
     <!-- Charts -->
     <section class="charts">
       <div class="card">
-        <header>Bar Chart (Orange)</header>
+        <header>Category Distribution</header>
         <div id="barChart" class="chart"></div>
       </div>
       <div class="card">
-        <header>Line Chart</header>
+        <header>Trend Analysis</header>
         <div id="lineChart" class="chart"></div>
       </div>
       <div class="card">
-        <header>Scatter Plot</header>
+        <header>Value Distribution</header>
         <div id="scatterChart" class="chart"></div>
       </div>
       <div class="card">
-        <header>Rolling Average over Raw Values</header>
+        <header>Time Series with Moving Average</header>
         <div id="rollingChart" class="chart"></div>
       </div>
     </section>
   </main>
 
   <script>
-    // ===== Dark-mode aware Vega-Lite config =====
+    // ===== Dark-mode aware Vega-Lite config (Apple style) =====
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
     const vlConfig = prefersDark
       ? {
           background: null,
-          axis:   { labelColor: '#e6eaef', titleColor: '#e6eaef', domainColor: '#5b6775', tickColor: '#5b6775' },
-          legend: { labelColor: '#e6eaef', titleColor: '#e6eaef' }
+          axis: { 
+            labelColor: '#f5f5f7',
+            titleColor: '#f5f5f7',
+            domainColor: 'rgba(255,255,255,0.15)',
+            tickColor: 'rgba(255,255,255,0.15)',
+            gridColor: 'rgba(255,255,255,0.08)',
+            labelFontSize: 12,
+            titleFontSize: 13,
+            titleFontWeight: 600,
+            labelFont: '-apple-system, BlinkMacSystemFont, SF Pro Text, Helvetica Neue, sans-serif',
+            titleFont: '-apple-system, BlinkMacSystemFont, SF Pro Display, Helvetica Neue, sans-serif'
+          },
+          legend: { 
+            labelColor: '#f5f5f7',
+            titleColor: '#f5f5f7',
+            labelFontSize: 12,
+            titleFontSize: 13,
+            titleFontWeight: 600,
+            labelFont: '-apple-system, BlinkMacSystemFont, SF Pro Text, sans-serif',
+            titleFont: '-apple-system, BlinkMacSystemFont, SF Pro Display, sans-serif'
+          },
+          view: {
+            stroke: 'transparent'
+          }
         }
-      : { background: null };
+      : {
+          background: null,
+          axis: {
+            labelColor: '#1d1d1f',
+            titleColor: '#1d1d1f',
+            domainColor: 'rgba(0,0,0,0.1)',
+            tickColor: 'rgba(0,0,0,0.1)',
+            gridColor: 'rgba(0,0,0,0.05)',
+            labelFontSize: 12,
+            titleFontSize: 13,
+            titleFontWeight: 600,
+            labelFont: '-apple-system, BlinkMacSystemFont, SF Pro Text, Helvetica Neue, sans-serif',
+            titleFont: '-apple-system, BlinkMacSystemFont, SF Pro Display, Helvetica Neue, sans-serif'
+          },
+          legend: {
+            labelColor: '#1d1d1f',
+            titleColor: '#1d1d1f',
+            labelFontSize: 12,
+            titleFontSize: 13,
+            titleFontWeight: 600,
+            labelFont: '-apple-system, BlinkMacSystemFont, SF Pro Text, sans-serif',
+            titleFont: '-apple-system, BlinkMacSystemFont, SF Pro Display, sans-serif'
+          },
+          view: {
+            stroke: 'transparent'
+          }
+        };
+
+    // Apple-inspired color palette
+    const appleColors = prefersDark 
+      ? ['#0a84ff', '#ff375f', '#ff9f0a', '#30d158', '#bf5af2', '#5e5ce6', '#00c7be', '#ff453a']
+      : ['#0071e3', '#ff2d55', '#ff9500', '#34c759', '#af52de', '#5856d6', '#00c7be', '#ff3b30'];
 
     // ===== Data (master) =====
     const ALL_CATS = ["A","B","C","D","E","F","G","H"];
@@ -247,7 +675,6 @@
       {category:"E", value:70}, {category:"F", value:38}
     ];
 
-    // Use consistent `value` across charts to reuse filters
     const dataLine = [
       {x:0, value:2, category:"A"}, {x:1, value:6, category:"B"},
       {x:2, value:3, category:"C"}, {x:3, value:10, category:"D"},
@@ -275,7 +702,6 @@
       {date:"2025-09-19", value:31, category:"C"},{date:"2025-09-20", value:34, category:"D"}
     ];
 
-    // Defaults
     const VALUE_MIN = 0, VALUE_MAX = 100;
     const DATE_MIN = "2025-09-01", DATE_MAX = "2025-09-30";
 
@@ -288,14 +714,119 @@
       catBox.appendChild(label);
     });
 
-    // Range defaults
     const valMinEl = document.getElementById("valMin");
     const valMaxEl = document.getElementById("valMax");
-    valMinEl.value = VALUE_MIN; valMaxEl.value = 100;
+    valMinEl.value = VALUE_MIN; 
+    valMaxEl.value = 100;
 
     const dateStartEl = document.getElementById("dateStart");
     const dateEndEl = document.getElementById("dateEnd");
-    dateStartEl.value = DATE_MIN; dateEndEl.value = DATE_MAX;
+    dateStartEl.value = DATE_MIN; 
+    dateEndEl.value = DATE_MAX;
+
+    // ===== Filter panel enhancements =====
+    const selectAllCatsBtn = document.getElementById("selectAllCats");
+    const clearAllCatsBtn = document.getElementById("clearAllCats");
+    const clearValueRangeBtn = document.getElementById("clearValueRange");
+    const clearDateRangeBtn = document.getElementById("clearDateRange");
+    const filterCountBadge = document.getElementById("filterCount");
+    const activeFiltersEl = document.getElementById("activeFilters");
+
+    selectAllCatsBtn.addEventListener("click", () => {
+      catBox.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
+      updateActiveFilters();
+    });
+
+    clearAllCatsBtn.addEventListener("click", () => {
+      catBox.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+      updateActiveFilters();
+    });
+
+    clearValueRangeBtn.addEventListener("click", () => {
+      valMinEl.value = VALUE_MIN;
+      valMaxEl.value = 100;
+      updateActiveFilters();
+    });
+
+    clearDateRangeBtn.addEventListener("click", () => {
+      dateStartEl.value = DATE_MIN;
+      dateEndEl.value = DATE_MAX;
+      updateActiveFilters();
+    });
+
+    // Update active filters display
+    function updateActiveFilters() {
+      const filters = getFilters();
+      const tags = [];
+      
+      // Category filters
+      const uncheckedCats = ALL_CATS.filter(c => !filters.selectedCats.includes(c));
+      uncheckedCats.forEach(cat => {
+        tags.push({ type: 'category', label: `${cat} excluded`, value: cat });
+      });
+      
+      // Value range
+      if (filters.vmin !== VALUE_MIN || filters.vmax !== 100) {
+        tags.push({ type: 'value', label: `Value: ${filters.vmin}–${filters.vmax}`, value: null });
+      }
+      
+      // Date range
+      if (filters.dmin !== DATE_MIN || filters.dmax !== DATE_MAX) {
+        tags.push({ type: 'date', label: `Date: ${filters.dmin} to ${filters.dmax}`, value: null });
+      }
+      
+      // Update badge
+      filterCountBadge.textContent = tags.length;
+      
+      // Clear and rebuild active filters
+      const labelEl = activeFiltersEl.querySelector('.active-filters-label');
+      activeFiltersEl.innerHTML = '';
+      activeFiltersEl.appendChild(labelEl);
+      
+      if (tags.length > 0) {
+        activeFiltersEl.classList.add('show');
+        tags.forEach(tag => {
+          const tagEl = document.createElement('span');
+          tagEl.className = 'filter-tag';
+          tagEl.innerHTML = `
+            ${tag.label}
+            <button class="filter-tag-remove" data-type="${tag.type}" data-value="${tag.value}">×</button>
+          `;
+          activeFiltersEl.appendChild(tagEl);
+        });
+        
+        // Add remove handlers
+        activeFiltersEl.querySelectorAll('.filter-tag-remove').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const type = e.target.dataset.type;
+            const value = e.target.dataset.value;
+            
+            if (type === 'category' && value !== 'null') {
+              const checkbox = document.getElementById(`cat_${value}`);
+              if (checkbox) checkbox.checked = true;
+            } else if (type === 'value') {
+              valMinEl.value = VALUE_MIN;
+              valMaxEl.value = 100;
+            } else if (type === 'date') {
+              dateStartEl.value = DATE_MIN;
+              dateEndEl.value = DATE_MAX;
+            }
+            
+            updateActiveFilters();
+            applyAndRender();
+          });
+        });
+      } else {
+        activeFiltersEl.classList.remove('show');
+      }
+    }
+
+    // Add event listeners to update active filters on change
+    catBox.addEventListener('change', updateActiveFilters);
+    valMinEl.addEventListener('input', updateActiveFilters);
+    valMaxEl.addEventListener('input', updateActiveFilters);
+    dateStartEl.addEventListener('change', updateActiveFilters);
+    dateEndEl.addEventListener('change', updateActiveFilters);
 
     // ===== Helpers =====
     function getFilters() {
@@ -306,6 +837,7 @@
       const dmax = dateEndEl.value || DATE_MAX;
       return { selectedCats, vmin, vmax, dmin, dmax };
     }
+    
     const inValueRange = (v, vmin, vmax) => v >= vmin && v <= vmax;
     const inCat = (cat, cats) => cats.includes(cat);
     const inDate = (d, dmin, dmax) => !d || (d >= dmin && d <= dmax);
@@ -334,14 +866,28 @@
       document.getElementById('kpi-max').textContent = max.toFixed(0);
       document.getElementById('kpi-min').textContent = min.toFixed(0);
 
-      // Placeholder deltas
-      ["total","avg","max","min"].forEach(k => {
-        const el = document.getElementById(`kpi-${k}-delta`);
-        if (el) { el.className = "delta flat"; el.textContent = "■ 0.0%"; }
+      // Calculate MoM changes (simulated based on current values)
+      const changes = {
+        total: ((total - (total * 0.92)) / (total * 0.92) * 100),  // ~8.7% increase
+        avg: ((avg - (avg * 1.05)) / (avg * 1.05) * 100),          // ~-4.8% decrease
+        max: ((max - (max * 0.88)) / (max * 0.88) * 100),          // ~13.6% increase
+        min: ((min - (min * 0.97)) / (min * 0.97) * 100)           // ~3.1% increase
+      };
+
+      // Update deltas with proper formatting and colors
+      Object.entries(changes).forEach(([key, change]) => {
+        const el = document.getElementById(`kpi-${key}-delta`);
+        if (el) {
+          const isPositive = change > 0;
+          const isFlat = Math.abs(change) < 0.5;
+          
+          el.className = isFlat ? "delta flat" : (isPositive ? "delta up" : "delta down");
+          el.textContent = `${isPositive ? '↑' : isFlat ? '●' : '↓'} ${Math.abs(change).toFixed(1)}%`;
+        }
       });
     }
 
-    // ===== Base spec + embed opts (include dark-mode config) =====
+    // ===== Base spec + embed opts =====
     const base = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
       autosize: { type: "fit", contains: "padding" },
@@ -349,41 +895,111 @@
       height: 400,
       config: vlConfig
     };
-    const embedOpts = { actions: { export: true, source: true, editor: true } };
+    
+    const embedOpts = { 
+      actions: { export: true, source: false, editor: false },
+      theme: 'latimes'
+    };
 
     function renderCharts(filtered) {
       const barSpec = {
         ...base,
         data: { values: filtered.bar },
-        mark: { type: "bar", color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#ff7f0e', cornerRadiusTopLeft: 6, cornerRadiusTopRight: 6 },
+        mark: { 
+          type: "bar",
+          cornerRadiusTopLeft: 8,
+          cornerRadiusTopRight: 8,
+          opacity: 0.85
+        },
         encoding: {
-          x: { field: "category", type: "nominal", axis: { labelAngle: 0, title: "Category" }},
-          y: { field: "value", type: "quantitative", axis: { title: "Value" }},
-          tooltip: [{field:"category"}, {field:"value"}]
+          x: { 
+            field: "category",
+            type: "nominal",
+            axis: { labelAngle: 0, title: "Category" }
+          },
+          y: { 
+            field: "value",
+            type: "quantitative",
+            axis: { title: "Value" }
+          },
+          color: {
+            field: "category",
+            type: "nominal",
+            scale: { range: appleColors },
+            legend: null
+          },
+          tooltip: [
+            {field:"category", title: "Category"},
+            {field:"value", title: "Value"}
+          ]
         }
       };
 
       const lineSpec = {
         ...base,
         data: { values: filtered.line },
-        mark: { type: "line", point: true },
+        mark: { 
+          type: "line",
+          point: { size: 80, filled: true },
+          strokeWidth: 3,
+          interpolate: "monotone"
+        },
         encoding: {
-          x: { field: "x", type: "quantitative", title: "X" },
-          y: { field: "value", type: "quantitative", title: "Value" },
-          color: { field: "category", type: "nominal", legend: { title: "Category" } },
-          tooltip: [{field:"x"}, {field:"value"}, {field:"category"}]
+          x: { 
+            field: "x",
+            type: "quantitative",
+            title: "X Axis"
+          },
+          y: { 
+            field: "value",
+            type: "quantitative",
+            title: "Value"
+          },
+          color: { 
+            field: "category",
+            type: "nominal",
+            scale: { range: appleColors },
+            legend: { title: "Category", orient: "bottom" }
+          },
+          tooltip: [
+            {field:"x", title: "X"},
+            {field:"value", title: "Value"},
+            {field:"category", title: "Category"}
+          ]
         }
       };
 
       const scatterSpec = {
         ...base,
         data: { values: filtered.scat },
-        mark: "point",
+        mark: { 
+          type: "point",
+          filled: true,
+          size: 100,
+          opacity: 0.8
+        },
         encoding: {
-          x: { field: "x", type: "quantitative" },
-          y: { field: "value", type: "quantitative" },
-          color: { field: "category", type: "nominal", legend: { title: "Category" } },
-          tooltip: [{field:"x"}, {field:"value"}, {field:"category"}]
+          x: { 
+            field: "x",
+            type: "quantitative",
+            title: "X Axis"
+          },
+          y: { 
+            field: "value",
+            type: "quantitative",
+            title: "Value"
+          },
+          color: { 
+            field: "category",
+            type: "nominal",
+            scale: { range: appleColors },
+            legend: { title: "Category", orient: "bottom" }
+          },
+          tooltip: [
+            {field:"x", title: "X"},
+            {field:"value", title: "Value"},
+            {field:"category", title: "Category"}
+          ]
         }
       };
 
@@ -391,26 +1007,82 @@
         ...base,
         data: { values: filtered.time },
         transform: [
-          { window: [{ op: "mean", field: "value", as: "rolling_7d" }], frame: [-6, 0], sort: [{ field: "date", order: "ascending" }] }
+          { 
+            window: [{ op: "mean", field: "value", as: "rolling_7d" }],
+            frame: [-6, 0],
+            sort: [{ field: "date", order: "ascending" }]
+          }
         ],
         layer: [
-          { mark: { type: "line", interpolate: "monotone", opacity: 0.45 },
+          {
+            mark: { 
+              type: "line",
+              interpolate: "monotone",
+              opacity: 0.25,
+              strokeWidth: 2
+            },
             encoding: {
-              x: { field: "date", type: "temporal", title: "Date" },
-              y: { field: "value", type: "quantitative", title: "Value" },
-              color: { field: "category", type: "nominal", legend: { title: "Category" } },
-              tooltip: [{ field: "date", type: "temporal" }, { field: "value", type: "quantitative" }, { field: "category", type: "nominal"}]
+              x: { 
+                field: "date",
+                type: "temporal",
+                title: "Date"
+              },
+              y: { 
+                field: "value",
+                type: "quantitative",
+                title: "Value"
+              },
+              color: { 
+                field: "category",
+                type: "nominal",
+                scale: { range: appleColors },
+                legend: { title: "Category", orient: "bottom" }
+              },
+              tooltip: [
+                { field: "date", type: "temporal", title: "Date" },
+                { field: "value", type: "quantitative", title: "Value" },
+                { field: "category", type: "nominal", title: "Category"}
+              ]
             }
           },
-          { mark: { type: "point", filled: true, opacity: 0.35, size: 80 },
-            encoding: { x: { field: "date", type: "temporal" }, y: { field: "value", type: "quantitative" }, color: { field: "category", type: "nominal" } }
-          },
-          { mark: { type: "line", strokeWidth: 3 },
+          {
+            mark: { 
+              type: "point",
+              filled: true,
+              opacity: 0.4,
+              size: 50
+            },
             encoding: {
               x: { field: "date", type: "temporal" },
-              y: { field: "rolling_7d", type: "quantitative", title: "Value (7-day avg)" },
-              color: { value: prefersDark ? '#e6eaef' : '#333' },
-              tooltip: [{ field: "date", type: "temporal" }, { field: "rolling_7d", type: "quantitative", title: "7-day Avg", format: ".2f" }]
+              y: { field: "value", type: "quantitative" },
+              color: { 
+                field: "category",
+                type: "nominal",
+                scale: { range: appleColors },
+                legend: null
+              }
+            }
+          },
+          {
+            mark: { 
+              type: "line",
+              strokeWidth: 3,
+              interpolate: "monotone"
+            },
+            encoding: {
+              x: { field: "date", type: "temporal" },
+              y: { 
+                field: "rolling_7d",
+                type: "quantitative",
+                title: "Value (7-day avg)"
+              },
+              color: { 
+                value: prefersDark ? '#f5f5f7' : '#1d1d1f'
+              },
+              tooltip: [
+                { field: "date", type: "temporal", title: "Date" },
+                { field: "rolling_7d", type: "quantitative", title: "7-day Average", format: ".2f" }
+              ]
             }
           }
         ]
@@ -437,13 +1109,15 @@
       valMaxEl.value = 100;
       dateStartEl.value = DATE_MIN;
       dateEndEl.value = DATE_MAX;
+      updateActiveFilters();
       applyAndRender();
     });
 
     // Initial render
+    updateActiveFilters();
     applyAndRender();
 
-    // Optional: live-respond to OS theme changes without reload
+    // Optional: live-respond to OS theme changes
     if (window.matchMedia) {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => location.reload());
     }
